@@ -1,0 +1,3 @@
+# WP Galleries Plugin
+
+### installation:
