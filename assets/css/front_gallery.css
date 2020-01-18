@@ -1,7 +1,6 @@
 
 .gallery_container .img-thumb{
     margin-bottom:2rem;
-    max-height:250px;
 }
 
 h4.modal-title{
@@ -10,9 +9,15 @@ h4.modal-title{
     width: 100%;
     margin: 1rem auto;
 }
+button.close{
+    background-color: #FFF !important;
+}
+button.close span{
+    font-size:3.5rem !important;
+}
 @media screen and (min-width:1280px) {
 
     .gallery_container {
-        min-width: 120rem !important;
+        min-width: 1200px !important;
     }
 }

@@ -10,13 +10,12 @@
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
-//https://codepen.io/nsom/pen/VbqLew
+
+//class for recizing images
+include 'includes/aq_resizer.php';
 
 //https://codepen.io/nsom/pen/VbqLew
-//https://code.tutsplus.com/tutorials/how-to-create-an-instant-image-gallery-plugin-for-wordpress--wp-25321
-//https://github.com/hlashbrooke/WordPress-Plugin-Template
 
-//require_once 'includes/class-wp-galleries.php';
 //Add static files
 function wp_gallery_scripts(){
     //css
@@ -39,17 +38,19 @@ add_image_size( 'small-gallery', 250, 250, true );
 add_image_size( 'medium-gallery', 640, 480, true );
 
 // Registers the new post type and taxonomy
-
+/**
+ * Annnew post type and menue
+ */
 function add_new_posttype() {
     register_post_type( 'WP-Gallery',
         array(
             'labels' => array(
                 'name' => __( 'WP-Gallery' ),
                 'singular_name' => __( 'Image' ),
-                //'add_new' => __( 'Add New Image' ),
-                //'add_new_item' => __( 'Add New Image' ),
-                'edit_item' => __( 'Edit Image' ),
-                //'new_item' => __( 'Add New Image' ),
+                'add_new' => __( 'Add New Image' ),
+                'add_new_item' => __( 'Add New Image' ),
+                'edit_item' => __( 'Edit Image ' ),
+                'new_item' => __( 'Add New Image' ),
                 'view_item' => __( 'View Image' ),
                 'search_items' => __( 'Search Image' ),
                 'not_found' => __( 'No Image found' ),
@@ -67,98 +68,81 @@ if ( is_admin() ) { // admin actions
     add_action( 'init', 'add_new_posttype' );
 }
 
-function wp_gallery_shortcode($atts, $content=null, $tag = '') {
+
+//add shortcode to title
+function add_shortcodes($title, $id) {
+
+    if(get_post_type($id) == 'wp-gallery') {
+        return $title . '  [wp_gallery id=' . $id . ' size="small-gallery"]';
+    } else {
+        return $title;
+    }
+
+}
+
+add_filter('the_title', 'add_shortcodes', 10, 2);
+
+
+/**
+ * Shortcode for the gallery
+ * @param $atts
+ * @param null $content
+ * @return string
+ */
+function wp_gallery_shortcode($atts, $content=null) {
 
     ob_start();
-    // define attributes and their defaults
-    extract( shortcode_atts( array (
-        'type' => 'WP-Gallery',
-        'order' => 'date',
-        'orderby' => 'title',
-        'posts' => -1,
-        'color' => '',
-        'fabric' => '',
-        'category' => '',
-    ), $atts ) );
 
-    // define query parameters based on attributes
-    $options = array(
-        'post_type' => 'WP-Gallery',
-        'order' => $order,
-        'orderby' => $orderby,
-        'posts_per_page' => 1,
-        'color' => $color,
-        'fabric' => $fabric,
-        'category_name' => $category,
+    //Get Post ID from the shortcode
+    $attributes = shortcode_atts(
+        array(
+            'id' => null,
+            'size' => null
+        ), $atts );
+
+    $post_id = $attributes['id'];
+    $size = $attributes['size'];
+
+    //filtering of the Ppost details
+    $args = array(
+        'post_type' => 'attachment',
+        'post_mime_type' => 'image',
+        'numberposts' => -1,
+        'post_status' => null,
+        'post_parent' => $post_id
     );
-    $the_query = new WP_Query( $options );
 
-    if ( $the_query->have_posts() ) {
+    //get post details
+    $image_posts_details = get_posts($args);
 
-        $args = array(
-            'post_type' => 'attachment',
-            'post_mime_type' => 'image',
-            'numberposts' => -1,
-            'post_status' => null,
-            'post_parent' => 110
-        );
+    $image_container = '<div class="container gallery_container"><div class="row">';
 
-        $image_posts_details = get_posts($args);
+    foreach($image_posts_details  as $image_post) {
 
-        $image_container = '<div class="container gallery_container"><div class="row">';
+         // echo $image_post->guid. "</br>";
+         // echo $image_post->post_title. "</br>";
 
-        foreach($image_posts_details  as $image_post) {
-
-             // echo $image_post->guid. "</br>";
-             // echo $image_post->post_title. "</br>";
-
-             $image_container .= '<a href="' . $image_post->guid . '" class="lightbox_trigger col-4" data-toggle="lightbox"';
-             $image_container .=  ' data-title = "'. $image_post->post_title . '" data-gallery="gallery" data-max-width="640">';
-             $image_container .= '<img src="' . $image_post->guid . '" class="img-fluid rounded img-thumb" />';
-             $image_container .= '</a>';
-             //$image_container .= '<p class="simple_capture">' . $image_post->post_title . '</p>';
-
+        if($size == 'small-gallery') {
+            $height = '250px';
+            $grid = 3;
+            $image = aq_resize($image_post->guid, 250, 250, true, true);
+        } else  {
+            $height = '480px';
+            $grid = 6;
+            $image = aq_resize($image_post->guid, 640, 480, true, true);
         }
 
-        $image_container .= '</div></div';
-
-        echo $image_container;
-
-        //print_r(get_the_ID());
-          echo "<pre>";
-          print_r($atts);
-          echo "</pre>";
+         $image_container .= '<a href="' . $image_post->guid . '" class="lightbox_trigger col-' . $grid . '" data-toggle="lightbox"';
+         $image_container .=  ' data-title = "'. $image_post->post_title . '" data-gallery="gallery" data-max-width="' . $height . '">';
+         $image_container .= '<img src="' . $image . '" class="img-fluid rounded img-thumb" />';
+         $image_container .= '</a>';
     }
 
-    else {
-        echo "Sorry no Galleries  Found";
-    }
+    $image_container .= '</div></div';
 
-    $wporg_atts = shortcode_atts([
-        'title' => 'WordPress.org',
-    ], $atts, $tag);
+    echo $image_container;
 
     wp_reset_postdata();
     return ob_get_clean();
 }
 add_shortcode('wp_gallery', 'wp_gallery_shortcode');
-
-/*//Admin
-if ( is_admin() ) { // admin actions
-    add_action( 'admin_enqueue_scripts', 'chrs_options_style' );
-    add_action( 'admin_init', 'chrs_theme_options_init' );
-    add_action( 'admin_menu', 'chrs_theme_options_add' );
-
-}
-function chrs_options_style() {
-    wp_register_style( 'chrs_options_css',  plugins_url('css/admin-styles.css', __FILE__), false, '1.0.0' );
-    wp_enqueue_style( 'chrs_options_css' );
-}
-function chrs_theme_options_init(){
-    register_setting( 'chrs_options', 'chrs_theme_options');
-}
-function chrs_theme_options_add() {
-    //add_menu_page( __( 'Theme Options', 'chrstheme' ), __( 'Theme Options', 'chrstheme' ), 'edit_theme_options', 'theme_options', 'chrs_theme_options_do',plugins_url( 'myplugin/images/icon.png' ),80.5);
-
-    add_submenu_page( 'edit.php?post_type=simple_gallery', 'Gallery settings', 'Gallery settings', 'manage_options', 'my-custom-submenu-page', 'chrs_theme_options_do' );
-}*/
